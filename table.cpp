@@ -106,6 +106,12 @@ void Table::checkPoint() {
     remove(redoLogFile);
 }
 
+void Table::showAll(){
+    for(auto& d : data){
+        std::cout << d.first << ":" << d.second << endl;
+    }
+}
+
 void Table::dump(const string& fname,const string& tempName) {
 	FILE* fp = fopen(tempName.c_str(), "wb");
 	if (fp == NULL)

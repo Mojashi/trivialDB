@@ -28,7 +28,9 @@ int main(){
             table.checkPoint();
             break;
         } else if(args[0] == "help"){
-            cout << "begin exit help" << endl;
+            cout << "begin show exit help" << endl;
+        } else if(args[0] == "show"){
+            table.showAll();
         } else {
             cerr << "unknown operation" << endl;
         }

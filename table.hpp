@@ -24,6 +24,7 @@ class Table {
 	void applyRedoLog(const map<string, string>& writeSet,const set<string>& deleteSet);
 	void checkPoint();
 	Transaction makeTransaction();
+	void showAll();
 };
 
 class OperationException : public std::exception {
