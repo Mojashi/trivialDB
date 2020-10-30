@@ -9,14 +9,20 @@ using std::set;
 using std::string;
 
 extern const char* redoLogFile;
+extern const char* dbFile;
+
 class Transaction;
 class Table {
 	map<string, string> data;
+
+	void dump(const string& fname,const string& tempName);
+	void load(const string& fname);
 
    public:
 	string get(const string& key);
 	bool exist(const string& key);
 	void applyRedoLog(const map<string, string>& writeSet,const set<string>& deleteSet);
+	void checkPoint();
 	Transaction makeTransaction();
 };
 

@@ -49,6 +49,9 @@ void Transaction::begin() {
                 abort();
                 cout << "successfully aborted" << endl;
             }
+            else if(args[0] == "help"){
+                cout << "update insert delete read commit abort help" << endl;
+            }
             else {
                 cout << "unknown operation" << endl;
             }
@@ -61,6 +64,8 @@ void Transaction::begin() {
 }
 
 string Transaction::get(const string& key ) {
+    if(!exist(key)) 
+        throw RecordDoesNotExistError();
     string ret;
     if(readSet.count(key) > 0)
         ret = readSet[key];
@@ -98,16 +103,16 @@ void Transaction::writeRedoLog(const string& fname){
     string redolog = "$" + std::to_string(deleteSet.size() + writeSet.size()) + "\r\n";
     
     for(auto w : deleteSet){
-        redolog += "$6\r\ndelete\r\n$" + std::to_string(w.size()) + "\r\n" + w + "\r\n";
+        redolog += "$6\ndelete\n$" + std::to_string(w.size()) + "\n" + w + "\n";
     }
     for(auto w : writeSet){
-        redolog += "$6\r\nupdate\r\n$" + std::to_string(w.first.size()) + "\r\n" + w.first + "\r\n$" + std::to_string(w.second.size())+ "\r\n" + w.second + "\r\n";
+        redolog += "$3\nset\n$" + std::to_string(w.first.size()) + "\n" + w.first + "\n$" + std::to_string(w.second.size())+ "\n" + w.second + "\n";
     }
 
     unsigned int sum = checksum(redolog.c_str(), redolog.size());
-    redolog = "$" + std::to_string(sum) + "\r\n$" + std::to_string(redolog.size()) + "\r\n" + redolog;
+    redolog = "$" + std::to_string(sum) + "\n$" + std::to_string(redolog.size()) + "\n" + redolog;
     
-    int fd = open(fname.c_str(), O_WRONLY | O_APPEND);
+    int fd = open(fname.c_str(), O_WRONLY | O_APPEND | O_CREAT);
     if(fd == -1){
         throw std::runtime_error("an error occurred while opening file");
     }

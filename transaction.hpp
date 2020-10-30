@@ -14,6 +14,8 @@ class Transaction{
     set<string> deleteSet;
     Table* table;
 
+    void writeRedoLog(const string& fname);
+
 public:
     Transaction(Table* table, int id);
     bool commit();
@@ -27,6 +29,5 @@ public:
     void update(const string& key, const string& value, bool insertIfNotExist=false);
     void insert(const string& key, const string& value, bool updateIfExist=false);  
     bool exist(const string& key);
-    void writeRedoLog(const string& fname);
 };
 
