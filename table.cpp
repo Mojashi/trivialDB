@@ -6,6 +6,7 @@
 #include <cassert>
 #include "utils.hpp"
 
+using std::cout;
 using std::cerr;
 using std::endl;
 
@@ -63,7 +64,10 @@ void Table::checkPoint() {
 	load(dbFile);
 
 	FILE* fp = fopen(redoLogFile, "rb");
-	if (fp == NULL) return;
+	if (fp == NULL) {
+        return;
+    }
+    cout << "redo.log found" << endl;
 	try {
 		while (!isEOF(fp)) {
 			if (fscanf(fp, "$%u\n$%u\n", &sum, &sz) < 2) {
@@ -107,8 +111,9 @@ void Table::checkPoint() {
 }
 
 void Table::showAll(){
+    cout << endl;
     for(auto& d : data){
-        std::cout << d.first << ":" << d.second << endl;
+        cout << d.first << ":" << d.second << endl;
     }
 }
 
