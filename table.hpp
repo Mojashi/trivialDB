@@ -2,6 +2,7 @@
 #include <map>
 #include <set>
 #include <string>
+#include "cnf.hpp"
 #include "transaction.hpp"
 
 using std::map;
@@ -19,6 +20,7 @@ class Table {
 	void load(const string& fname);
 
    public:
+    void upsert(const string& key, const string& val);
 	string get(const string& key);
 	bool exist(const string& key);
 	void applyRedoLog(const map<string, string>& writeSet,const set<string>& deleteSet);
@@ -41,4 +43,12 @@ class RecordDoesNotExistError : public OperationException {
 class RecordExistError : public OperationException {
    public:
 	RecordExistError() : OperationException("already exist") {}
+};
+class InvalidKeyError : public OperationException {
+   public:
+	InvalidKeyError() : OperationException("invalid key") {}
+};
+class TooLargeTransactionError : public OperationException {
+   public:
+	TooLargeTransactionError() : OperationException("too large transaction") {}
 };

@@ -1,4 +1,6 @@
 #include "utils.hpp"
+#include "cnf.hpp"
+
 vector<string> split(const string& str, char delim) {
     vector<string> ret;
     size_t idx = 0, nex;
@@ -19,4 +21,8 @@ unsigned int checksum(const char* data, int len){
         sum &= mod;
     }
     return sum;
+}
+
+bool validateKey(const string& key){
+    return (MAX_KEY_LENGTH >= key.size() && key.size() > 0 && key.find('\0') == string::npos);
 }

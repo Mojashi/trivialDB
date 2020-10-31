@@ -2,6 +2,7 @@
 #include <map>
 #include <string>
 #include <set>
+#include "cnf.hpp"
 #include "table.hpp"
 using std::map;
 using std::string;

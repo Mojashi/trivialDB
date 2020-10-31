@@ -6,27 +6,31 @@
 #include <cassert>
 #include "utils.hpp"
 
-using std::cout;
 using std::cerr;
+using std::cout;
 using std::endl;
 
 const char* redoLogFile = "redo.log";
 const char* dbFile = "data.db";
-const char* dbTempFile = "data.temo";
+const char* dbTempFile = "data.temp";
 
 string Table::get(const string& key) {
+    if(!validateKey(key)) throw InvalidKeyError();
+
 	if (!exist(key)) throw RecordDoesNotExistError();
 	return data[key];
 }
-bool Table::exist(const string& key) { return data.count(key) > 0; }
+bool Table::exist(const string& key) {
+    if(!validateKey(key)) throw InvalidKeyError();
+	return data.count(key) > 0; 
+}
 void Table::applyRedoLog(const map<string, string>& writeSet,
 						 const set<string>& deleteSet) {
 	for (auto& key : deleteSet) {
-		assert(data.count(key) > 0);
-		data.erase(key);
+		if (data.count(key) > 0) data.erase(key);
 	}
-	for (auto& key : writeSet) {
-		data[key.first] = key.second;
+	for (auto& w : writeSet) {
+		upsert(w.first, w.second);
 	}
 }
 Transaction Table::makeTransaction() { return Transaction(this, rand()); }
@@ -44,19 +48,22 @@ unsigned int readUInt(FILE* fp) {
 
 string readStr(FILE* fp) {
 	unsigned int len = readUInt(fp);
-	char* buf = new char[len + 1];
-	if (fread(buf, len, 1, fp) < 1) {
+	if (len > MAX_TRANSACTION_SIZE) 
+	    throw TooLargeTransactionError();
+
+	string buf(len, '\0');
+	char* bufp = &buf[0];
+	if (fread(bufp, len, 1, fp) < 1) {
 		throw invalid_format_error;
 	}
-    fgetc(fp); //read \n
-    buf[len] = '\0';
-	return string(buf);
+	fgetc(fp);	// read \n
+	return buf;
 }
 
-bool isEOF(FILE* fp){
-    bool ret = fgetc(fp) == EOF;
-    fseek(fp, -1, SEEK_CUR);
-    return ret;
+bool isEOF(FILE* fp) {
+	bool ret = fgetc(fp) == EOF;
+	fseek(fp, -1, SEEK_CUR);
+	return ret;
 }
 void Table::checkPoint() {
 	unsigned int sum, sz;
@@ -65,21 +72,24 @@ void Table::checkPoint() {
 
 	FILE* fp = fopen(redoLogFile, "rb");
 	if (fp == NULL) {
-        return;
-    }
-    cout << "redo.log found" << endl;
+		return;
+	}
+	cout << "redo.log found" << endl;
 	try {
 		while (!isEOF(fp)) {
-			if (fscanf(fp, "$%u\n$%u\n", &sum, &sz) < 2) {
+			if (fscanf(fp, "$%u\n$%u\n", &sum, &sz) < 2)
 				throw invalid_format_error;
-			}
+			if (sz > MAX_TRANSACTION_SIZE) 
+		        throw TooLargeTransactionError();
+        
 			map<string, string> writeSet;
 			set<string> deleteSet;
 
-			char* buf = new char[sz + 1];
-			if (fread(buf, sz, 1, fp) < 1) throw invalid_format_error;
+			string buf(sz, '\0');
+			char* bufp = &buf[0];
+			if (fread(bufp, sz, 1, fp) < 1) throw invalid_format_error;
 
-			if (sum != checksum(buf, sz)) throw invalid_checksum_error;
+			if (sum != checksum(bufp, sz)) throw invalid_checksum_error;
 
 			fseek(fp, -(int)sz, SEEK_CUR);
 			unsigned int n = readUInt(fp);
@@ -91,14 +101,12 @@ void Table::checkPoint() {
 					string val = readStr(fp);
 					writeSet[key] = val;
 				} else if (cmd == "delete") {
-					int len2;
 					string key = readStr(fp);
 					deleteSet.insert(key);
 				}
 			}
 
 			applyRedoLog(writeSet, deleteSet);
-			delete[] buf;
 		}
 	} catch (std::runtime_error& e) {
 		cerr << e.what() << endl;
@@ -107,36 +115,33 @@ void Table::checkPoint() {
 	fclose(fp);
 
 	dump(dbFile, dbTempFile);
-    remove(redoLogFile);
+	remove(redoLogFile);
 }
 
-void Table::showAll(){
-    cout << endl;
-    for(auto& d : data){
-        cout << d.first << ":" << d.second << endl;
-    }
+void Table::showAll() {
+	cout << endl;
+	for (auto& d : data) {
+		cout << d.first << ":" << d.second << endl;
+	}
 }
 
-void Table::dump(const string& fname,const string& tempName) {
+void Table::dump(const string& fname, const string& tempName) {
 	FILE* fp = fopen(tempName.c_str(), "wb");
 	if (fp == NULL)
 		throw std::runtime_error("an error occured while opening db file");
 
 	for (auto& w : data) {
-		if(fprintf(fp, "$%zu\n%s\n$%zu\n%s\n", w.first.size(), w.first.c_str(),
-				w.second.size(), w.second.c_str()) < 0){
-            fclose(fp);
-            throw std::runtime_error("");
-        }
+		if (fprintf(fp, "$%zu\n%s\n$%zu\n%s\n", w.first.size(), w.first.c_str(),
+					w.second.size(), w.second.c_str()) < 0) {
+			fclose(fp);
+			throw std::runtime_error("");
+		}
 	}
-	if(fflush(fp) == EOF)
-        throw std::runtime_error("");
-	if(fsync(fileno(fp)) == -1)
-        throw std::runtime_error("");
-	if(fclose(fp) == EOF)
-        throw std::runtime_error("");
-    if(rename(tempName.c_str(), fname.c_str()) != 0)
-        throw std::runtime_error("");
+	if (fflush(fp) == EOF) throw std::runtime_error("");
+	if (fsync(fileno(fp)) == -1) throw std::runtime_error("");
+	if (fclose(fp) == EOF) throw std::runtime_error("");
+	if (rename(tempName.c_str(), fname.c_str()) != 0)
+		throw std::runtime_error("");
 }
 
 void Table::load(const string& fname) {
@@ -149,10 +154,15 @@ void Table::load(const string& fname) {
 		while (!isEOF(fp)) {
 			string key = readStr(fp);
 			string val = readStr(fp);
-			data[key] = val;
+			upsert(key, val);
 		}
 	} catch (std::runtime_error& e) {
 		cerr << e.what() << endl;
 	}
 	fclose(fp);
+}
+
+void Table::upsert(const string& key, const string& val){
+	if(!validateKey(key)) throw InvalidKeyError();
+	data[key] = val;
 }
