@@ -134,6 +134,7 @@ void Transaction::writeRedoLog(const string& fname) {
 	// write中とかにエラー起きると永続化されてるのかされてないのかわからないので一回落として再起動時のcrash
 	// recoveryに託す
 	int wrote = 0, wsz = 0;
+    cout << "writing to redo.log" << endl;
 	while (wrote < redolog.size()) {
 		if ((wsz = write(fd, redolog.c_str() + wrote,
 						 redolog.size() - wrote)) == -1) {
@@ -143,6 +144,7 @@ void Transaction::writeRedoLog(const string& fname) {
 		}
 		wrote += wsz;
 	}
+    cout << "OK!" << endl;
 	if (fsync(fd) == -1) {
 		cerr << "an error occurred while syncing file" << endl;
 		exit(1);
