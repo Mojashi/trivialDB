@@ -5,7 +5,8 @@ vector<string> split(const string& str, char delim) {
     vector<string> ret;
     size_t idx = 0, nex;
     while((nex = str.find(delim,idx + 1)) != std::string::npos){
-        ret.push_back(str.substr(idx, nex - idx));
+        if(nex-idx > 0)
+            ret.push_back(str.substr(idx, nex - idx));
         idx = nex + 1;
     }
     if(idx < str.size())
@@ -25,4 +26,14 @@ unsigned int checksum(const char* data, int len){
 
 bool validateKey(const string& key){
     return (MAX_KEY_LENGTH >= key.size() && key.size() > 0 && key.find('\0') == string::npos);
+}
+
+
+#include <boost/chrono.hpp>
+
+long long timestampMillseconds()
+{
+  using namespace boost::chrono;
+  return duration_cast<milliseconds>(
+      system_clock::now().time_since_epoch()).count();
 }

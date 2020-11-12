@@ -4,21 +4,25 @@
 #include <set>
 #include "cnf.hpp"
 #include "table.hpp"
+
+#include <iostream>
 using std::map;
 using std::string;
 using std::set;
 class Table;
 class Transaction{
-    int id;
+    long long timestamp;
     bool commited = false, aborted = false;
     map<string,string> writeSet, readSet;
     set<string> deleteSet;
     Table* table;
+    std::ostream& os;
+    std::istream& is;
 
     void writeRedoLog(const string& fname);
 
 public:
-    Transaction(Table* table, int id);
+    Transaction(Table* table, long long timestamp, std::istream& is = std::cin, std::ostream& os = std::cout);
     bool commit();
     bool abort();
 

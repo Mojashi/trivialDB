@@ -8,3 +8,4 @@ using std::string;
 vector<string> split(const string& str, char delim);
 unsigned int checksum(const char* data, int len);
 bool validateKey(const string& key);
+long long timestampMillseconds();

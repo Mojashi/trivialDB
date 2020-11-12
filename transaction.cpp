@@ -5,57 +5,60 @@
 #include <unistd.h>
 #include <stdexcept>
 #include "utils.hpp"
-using std::cerr;
-using std::cout;
+#include <algorithm>
+
 using std::endl;
 
-Transaction::Transaction(Table* table, int id) : table(table), id(id) {}
+Transaction::Transaction(Table* table, long long timestamp,std::istream& is, std::ostream& os) : is(is), os(os), table(table), timestamp(timestamp) {}
 
 void Transaction::begin() {
-	cout << "TransactionID:" << id << endl;
+	os << "TransactionID:" << timestamp << endl;
 	while (!commited && !aborted) {
-		cout << "you > ";
+		os << "Transaction > ";
 		string s;
-		getline(std::cin, s);
+		getline(is, s);
+
+		replace(s.begin(),s.end(), '\n', ' ');
+		replace(s.begin(),s.end(), '\r', ' ');
+
 		vector<string> args = split(s, ' ');
 		if (args.size() == 0) continue;
 
-		cout << id << " > ";
 		try {
 			if (args[0] == "update") {
 				if (args.size() < 3)
 					throw std::invalid_argument("Not enough arguments");
 				update(args[1], args[2]);
-				cout << "OK" << endl;
+				os << "OK" << endl;
 			} else if (args[0] == "insert") {
 				if (args.size() < 3)
 					throw std::invalid_argument("Not enough arguments");
 				insert(args[1], args[2]);
-				cout << "OK" << endl;
+				os << "OK" << endl;
 			} else if (args[0] == "delete") {
 				if (args.size() < 2)
 					throw std::invalid_argument("Not enough arguments");
 				remove(args[1]);
-				cout << "OK" << endl;
+				os << "OK" << endl;
 			} else if (args[0] == "read") {
 				if (args.size() < 2)
 					throw std::invalid_argument("Not enough arguments");
-				cout << get(args[1]) << endl;
+				os << get(args[1]) << endl;
 			} else if (args[0] == "commit") {
 				commit();
-				cout << "successfully commited" << endl;
+				os << "successfully commited" << endl;
 			} else if (args[0] == "abort") {
 				abort();
-				cout << "successfully aborted" << endl;
+				os << "successfully aborted" << endl;
 			} else if (args[0] == "help") {
-				cout << "update insert delete read commit abort help" << endl;
+				os << "update insert delete read commit abort help" << endl;
 			} else {
-				cout << "unknown operation" << endl;
+				os << "unknown operation" << endl;
 			}
 		} catch (OperationException& e) {
-			cerr << e.what() << endl;
+			os << e.what() << endl;
 		} catch (std::invalid_argument& e) {
-			cerr << e.what() << endl;
+			os << e.what() << endl;
 		}
 	}
 }
@@ -134,23 +137,23 @@ void Transaction::writeRedoLog(const string& fname) {
 	// write中とかにエラー起きると永続化されてるのかされてないのかわからないので一回落として再起動時のcrash
 	// recoveryに託す
 	int wrote = 0, wsz = 0;
-    cout << "writing to redo.log" << endl;
+    os << "writing to redo.log" << endl;
 	while (wrote < redolog.size()) {
 		if ((wsz = write(fd, redolog.c_str() + wrote,
 						 redolog.size() - wrote)) == -1) {
-			cerr << "an error occurred while wfriting to file" << endl;
+			os << "an error occurred while wfriting to file" << endl;
 			close(fd);
 			exit(1);
 		}
 		wrote += wsz;
 	}
-    cout << "OK!" << endl;
+    os << "OK!" << endl;
 	if (fsync(fd) == -1) {
-		cerr << "an error occurred while syncing file" << endl;
+		os << "an error occurred while syncing file" << endl;
 		exit(1);
 	}
 	if (close(fd) == -1) {
-		cerr << "an error occurred while closing file" << endl;
+		os << "an error occurred while closing file" << endl;
 		exit(1);
 	}
 }

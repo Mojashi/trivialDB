@@ -18,22 +18,22 @@ string Table::get(const string& key) {
     if(!validateKey(key)) throw InvalidKeyError();
 
 	if (!exist(key)) throw RecordDoesNotExistError();
-	return data[key];
+	return data.at(key);
 }
 bool Table::exist(const string& key) {
     if(!validateKey(key)) throw InvalidKeyError();
-	return data.count(key) > 0; 
+	return data.contains(key); 
 }
 void Table::applyRedoLog(const map<string, string>& writeSet,
 						 const set<string>& deleteSet) {
 	for (auto& key : deleteSet) {
-		if (data.count(key) > 0) data.erase(key);
+		if (data.contains(key)) data.erase(key);
 	}
 	for (auto& w : writeSet) {
 		upsert(w.first, w.second);
 	}
 }
-Transaction Table::makeTransaction() { return Transaction(this, rand()); }
+Transaction Table::makeTransaction(std::istream& is,std::ostream& os) { return Transaction(this, timestampMillseconds(), is, os); }
 
 const std::runtime_error invalid_format_error("invalid format");
 const std::runtime_error invalid_checksum_error("invalid checksum");
@@ -120,9 +120,10 @@ void Table::checkPoint() {
 
 void Table::showAll() {
 	cout << endl;
-	for (auto& d : data) {
-		cout << d.first << ":" << d.second << endl;
-	}
+	
+	// for (auto& d : data) {
+	// 	cout << d.first << ":" << d.second << endl;
+	// }
 }
 
 void Table::dump(const string& fname, const string& tempName) {
@@ -130,7 +131,7 @@ void Table::dump(const string& fname, const string& tempName) {
 	if (fp == NULL)
 		throw std::runtime_error("an error occured while opening db file");
 
-	for (auto& w : data) {
+	for (auto& w : data.dump()) {
 		if (fprintf(fp, "$%zu\n%s\n$%zu\n%s\n", w.first.size(), w.first.c_str(),
 					w.second.size(), w.second.c_str()) < 0) {
 			fclose(fp);
@@ -164,5 +165,5 @@ void Table::load(const string& fname) {
 
 void Table::upsert(const string& key, const string& val){
 	if(!validateKey(key)) throw InvalidKeyError();
-	data[key] = val;
+	data.set(key, val);
 }

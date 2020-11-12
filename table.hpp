@@ -4,6 +4,8 @@
 #include <string>
 #include "cnf.hpp"
 #include "transaction.hpp"
+#include "hashmap.hpp"
+#include <iostream>
 
 using std::map;
 using std::set;
@@ -12,10 +14,10 @@ using std::string;
 extern const char* redoLogFile;
 extern const char* dbFile;
 
+
 class Transaction;
 class Table {
-	map<string, string> data;
-
+	HashMap<string, string> data; 
 	void dump(const string& fname,const string& tempName);
 	void load(const string& fname);
 
@@ -25,7 +27,7 @@ class Table {
 	bool exist(const string& key);
 	void applyRedoLog(const map<string, string>& writeSet,const set<string>& deleteSet);
 	void checkPoint();
-	Transaction makeTransaction();
+	Transaction makeTransaction(std::istream& is = std::cin, std::ostream& os = std::cout);
 	void showAll();
 };
 

@@ -1,20 +1,25 @@
 
-OBJS = table.o transaction.o utils.o
-CFLAGS = -g
-table.o: table.cpp
+OBJS = hashmap.o table.o transaction.o utils.o server.o main.o
+CFLAGS = -g -I/home/akihiro/vcpkg/installed/x64-linux/include/ -L/home/akihiro/vcpkg/installed/x64-linux/lib -ltbb -ltbbmalloc -lboost_chrono -pthread -Wfatal-errors
+
+table.o: table.cpp table.hpp utils.hpp hashmap.hpp transaction.hpp
 	g++ table.cpp -c $(CFLAGS)
-transaction.o: transaction.cpp
+hashmap.o: hashmap.cpp hashmap.hpp
+	g++ hashmap.cpp -c $(CFLAGS)
+server.o: server.cpp table.hpp server.hpp
+	g++ server.cpp -c $(CFLAGS)
+transaction.o: transaction.cpp cnf.hpp table.hpp transaction.hpp
 	g++ transaction.cpp -c $(CFLAGS)
 utils.o: utils.cpp
 	g++ utils.cpp -c $(CFLAGS)
-main.o: main.cpp
+main.o: main.cpp server.hpp
 	g++ main.cpp -c $(CFLAGS)
 test.o: test.cpp
 	g++ test.cpp -c $(CFLAGS)
 recovtest.o: recovtest.cpp
 	g++ recovtest.cpp -c $(CFLAGS)
-db: $(OBJS) main.o
-	g++ $(OBJS) main.o -o db $(CFLAGS)
+db: $(OBJS)
+	g++ $(OBJS) -o db $(CFLAGS)
 clean:
 	rm -f $(OBJS) out.txt out2.txt db test recovtest redo.log data.db
 test: $(OBJS) test.o recovtest.o
