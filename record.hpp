@@ -18,18 +18,17 @@ public:
 
     void RLock(TransactionId id){
         while((writerId < id){
-            if(writerId == none){
-                bool suc = __sync_bool_compare_and_swap(&writerId, none, id);
-                if(suc){
-                    __sync_fetch_and_add(&readerCount, 1);
-                    break;
-                }
+            bool suc = __sync_bool_compare_and_swap(&readerId, none, id);
+            if(suc){
+                __sync_fetch_and_add(&readerCount, 1);
+                break;
             }
         }
     }
 
     void RUnLock(TransactionId id){
-        __sync_fetch_and_sub(&readerCount, 1);
+        if(readerCount > 0)
+            __sync_fetch_and_sub(&readerCount, 1);
     }
 
     void WLock(TransactionId id){
@@ -43,8 +42,8 @@ public:
             }
         }
     }
-    void WUnLokc(){
-        
+    void WUnLock(){
+
     }
 
 };
