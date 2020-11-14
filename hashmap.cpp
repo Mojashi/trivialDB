@@ -18,7 +18,7 @@ bool HashMap<K,V>::contains(K key){
 }
 
 template<typename K, typename V>
-bool HashMap<K,V>::set(K key, V val){
+bool HashMap<K,V>::set(K key, const V& val){
     dictAccessor accessor;
     bool ret = data.insert(accessor, key);
     accessor->second = val;

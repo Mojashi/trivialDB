@@ -5,7 +5,9 @@
 #include "cnf.hpp"
 #include "transaction.hpp"
 #include "hashmap.hpp"
+#include "record.hpp"
 #include <iostream>
+#include <memory>
 
 using std::map;
 using std::set;
@@ -17,7 +19,7 @@ extern const char* dbFile;
 
 class Transaction;
 class Table {
-	HashMap<string, string> data; 
+	HashMap<string, std::shared_ptr<Record<string>>> data; 
 	void dump(const string& fname,const string& tempName);
 	void load(const string& fname);
 

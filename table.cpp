@@ -18,7 +18,7 @@ string Table::get(const string& key) {
     if(!validateKey(key)) throw InvalidKeyError();
 
 	if (!exist(key)) throw RecordDoesNotExistError();
-	return data.at(key);
+	return data.at(key)->val();
 }
 bool Table::exist(const string& key) {
     if(!validateKey(key)) throw InvalidKeyError();
@@ -133,7 +133,7 @@ void Table::dump(const string& fname, const string& tempName) {
 
 	for (auto& w : data.dump()) {
 		if (fprintf(fp, "$%zu\n%s\n$%zu\n%s\n", w.first.size(), w.first.c_str(),
-					w.second.size(), w.second.c_str()) < 0) {
+					w.second->val().size(), w.second->val().c_str()) < 0) {
 			fclose(fp);
 			throw std::runtime_error("");
 		}
@@ -165,5 +165,5 @@ void Table::load(const string& fname) {
 
 void Table::upsert(const string& key, const string& val){
 	if(!validateKey(key)) throw InvalidKeyError();
-	data.set(key, val);
+	data.set(key, std::shared_ptr<Record<string>>(new Record<string>(val) ));
 }
