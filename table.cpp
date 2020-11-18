@@ -14,12 +14,18 @@ const char* redoLogFile = "redo.log";
 const char* dbFile = "data.db";
 const char* dbTempFile = "data.temp";
 
-string Table::get(const string& key) {
+std::shared_ptr<Record<string>> Table::get(const string& key) {
     if(!validateKey(key)) throw InvalidKeyError();
 
-	if (!exist(key)) throw RecordDoesNotExistError();
-	return data.at(key)->val();
+	if (!exist(key)){
+		RecordPtr p = RecordPtr(new Record<string>(true));
+		data.set(key, p);
+		
+		//throw RecordDoesNotExistError();	
+	} 
+	return data.at(key);
 }
+
 bool Table::exist(const string& key) {
     if(!validateKey(key)) throw InvalidKeyError();
 	return data.contains(key); 
@@ -27,13 +33,15 @@ bool Table::exist(const string& key) {
 void Table::applyRedoLog(const map<string, string>& writeSet,
 						 const set<string>& deleteSet) {
 	for (auto& key : deleteSet) {
-		if (data.contains(key)) data.erase(key);
+		if (data.contains(key)) data.at(key)->setPhantomRecord(none);
 	}
 	for (auto& w : writeSet) {
 		upsert(w.first, w.second);
 	}
 }
-Transaction Table::makeTransaction(std::istream& is,std::ostream& os) { return Transaction(this, timestampMillseconds(), is, os); }
+Transaction Table::makeTransaction(std::istream& is,std::ostream& os) {
+	return Transaction(this, tscount++, is, os); 
+}
 
 const std::runtime_error invalid_format_error("invalid format");
 const std::runtime_error invalid_checksum_error("invalid checksum");
@@ -132,10 +140,12 @@ void Table::dump(const string& fname, const string& tempName) {
 		throw std::runtime_error("an error occured while opening db file");
 
 	for (auto& w : data.dump()) {
-		if (fprintf(fp, "$%zu\n%s\n$%zu\n%s\n", w.first.size(), w.first.c_str(),
-					w.second->val().size(), w.second->val().c_str()) < 0) {
-			fclose(fp);
-			throw std::runtime_error("");
+		if(!w.second->phantomRecord(none)){
+			if (fprintf(fp, "$%zu\n%s\n$%zu\n%s\n", w.first.size(), w.first.c_str(),
+						w.second->val(none).size(), w.second->val(none).c_str()) < 0) { //noneのところガチでよくない
+				fclose(fp);
+				throw std::runtime_error("");
+			}
 		}
 	}
 	if (fflush(fp) == EOF) throw std::runtime_error("");
@@ -167,3 +177,8 @@ void Table::upsert(const string& key, const string& val){
 	if(!validateKey(key)) throw InvalidKeyError();
 	data.set(key, std::shared_ptr<Record<string>>(new Record<string>(val) ));
 }
+
+// void Table::addPLRecords(RecordPtr& record){
+
+// 	phantomLikeRecords.push(record);
+// }

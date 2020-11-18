@@ -5,10 +5,32 @@ const TransactionId none = UINT32_MAX;
 
 template<typename V>
 Record<V>::Record(V val_):val_(val_){}
+template<typename V>
+Record<V>::Record(bool phantomRecord_):phantomRecord_(phantomRecord_){}
 
 template<typename V>
-V Record<V>::val(){
+V Record<V>::val(TransactionId id){
+	// if(id not in readerIds) throw UnknoenReaderException();
+	// if(phantomRecord()) throw 
     return val_;
+}
+
+template<typename V>
+void Record<V>::set(TransactionId id,V new_val){
+	if(writerId != id) throw UnknownWriterException();
+	phantomRecord_ = false;
+	val_ = new_val;
+}
+
+template<typename V>
+bool Record<V>::phantomRecord(TransactionId id){
+	// if(id not in readerIds) throw UnknoenReaderException();
+    return phantomRecord_;
+}
+template<typename V>
+void Record<V>::setPhantomRecord(TransactionId id){
+	if(writerId != id) throw UnknownWriterException();
+	phantomRecord_ = true;
 }
 
 template<typename V>
@@ -76,7 +98,7 @@ bool Record<V>::Upgrade(TransactionId id) {
 			return false;  // nazo
 	}
 
-	while (getOldestTransId() > id) {
+	while (getOldestTransId() >= id) {
 		if (writerId == none && readerIds.size() == 1) {
 			std::shared_lock<std::shared_mutex> lock(mtx);
 			if (writerId == none && readerIds.size() == 1) {

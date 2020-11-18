@@ -4,16 +4,18 @@
 #include <set>
 #include "cnf.hpp"
 #include "table.hpp"
-
+#include "record.hpp"
 #include <iostream>
+
 using std::map;
 using std::string;
 using std::set;
 class Table;
 class Transaction{
-    long long timestamp;
+    TransactionId id;
     bool commited = false, aborted = false;
-    map<string,string> writeSet, readSet;
+    map<string, std::shared_ptr<Record<string>>> rLocks, wLocks;
+    map<string,string> writeSet, readSet; //readSet includes writeSet
     set<string> deleteSet;
     Table* table;
     std::ostream& os;
@@ -21,10 +23,16 @@ class Transaction{
 
     void writeRedoLog(const string& fname);
 
+    void getWriteLock(const string& key);
+    void getReadLock(const string& key);
+    void applyToTable();
+
 public:
-    Transaction(Table* table, long long timestamp, std::istream& is = std::cin, std::ostream& os = std::cout);
+    Transaction(Table* table, TransactionId id, std::istream& is = std::cin, std::ostream& os = std::cout);
     bool commit();
     bool abort();
+    void releaseRLocks();
+    void releaseWLocks();
 
     void begin();
 
