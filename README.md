@@ -5,14 +5,14 @@ Key-Valueで、insert update delete readができます。
 intel TBBとboostが必要です
 
 ### サーバー
-'''
+```
 make db
 ./db
-'''
+```
 
 ### クライアント
 は存在しないのでtelnet localhost 31234
-'''
+```
 $ telnet localhost 31234
 Trying 127.0.0.1...
 Connected to localhost.
@@ -27,4 +27,4 @@ Transaction > commit
 writing to redo.log
 OK!
 successfully commited
-'''
+```
