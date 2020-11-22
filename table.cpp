@@ -18,7 +18,7 @@ std::shared_ptr<Record<string>> Table::get(const string& key) {
     if(!validateKey(key)) throw InvalidKeyError();
 
 	if (!exist(key)){
-		RecordPtr p = RecordPtr(new Record<string>(true));
+		RecordPtr p = RecordPtr(new Record<string>());
 		data.set(key, p);
 		
 		//throw RecordDoesNotExistError();	
@@ -33,7 +33,7 @@ bool Table::exist(const string& key) {
 void Table::applyRedoLog(const map<string, string>& writeSet,
 						 const set<string>& deleteSet) {
 	for (auto& key : deleteSet) {
-		if (data.contains(key)) data.at(key)->setPhantomRecord(none);
+		if (data.contains(key)) data.erase(key);
 	}
 	for (auto& w : writeSet) {
 		upsert(w.first, w.second);
@@ -140,9 +140,10 @@ void Table::dump(const string& fname, const string& tempName) {
 		throw std::runtime_error("an error occured while opening db file");
 
 	for (auto& w : data.dump()) {
-		if(!w.second->phantomRecord(none)){
+		VerPtr<string> latest = w.second->latest();
+		if(!latest->deleted()){
 			if (fprintf(fp, "$%zu\n%s\n$%zu\n%s\n", w.first.size(), w.first.c_str(),
-						w.second->val(none).size(), w.second->val(none).c_str()) < 0) { //noneのところガチでよくない
+						latest->val().size(), latest->val().c_str()) < 0) { //noneのところガチでよくない
 				fclose(fp);
 				throw std::runtime_error("");
 			}
@@ -160,7 +161,7 @@ void Table::load(const string& fname) {
 
 	FILE* fp = fopen(fname.c_str(), "rb");
 	if (fp == NULL) return;
-
+	std::map<string, string> bufTable;
 	try {
 		while (!isEOF(fp)) {
 			string key = readStr(fp);
@@ -178,7 +179,6 @@ void Table::upsert(const string& key, const string& val){
 	data.set(key, std::shared_ptr<Record<string>>(new Record<string>(val) ));
 }
 
-// void Table::addPLRecords(RecordPtr& record){
-
-// 	phantomLikeRecords.push(record);
-// }
+TimeStamp Table::getTimeStamp(){
+	return __sync_fetch_and_add(&tscount, 1);
+}

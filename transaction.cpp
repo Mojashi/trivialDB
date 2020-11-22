@@ -68,62 +68,43 @@ void Transaction::begin() {
 	}
 }
 
+void Transaction::fetch(const string& key){
+	if(readSet.count(key) || deleteSet.count(key)) return;
+	auto r = table->get(key);
+	auto v = r->latest();
+	if(v->deleted())
+		deleteSet.insert(key);
+	else
+		readSet[key] = r->latest()->val();
+}
+
 string Transaction::get(const string& key) {
 	if (!validateKey(key)) throw InvalidKeyError();
 
-	getReadLock(key);
+	fetch(key);
 	if (readSet.count(key) > 0)
 		return readSet[key];
 	if (deleteSet.count(key)) throw RecordDoesNotExistError();
-	
 	assert(true);
-}
-
-void Transaction::getReadLock(const string& key){
-	if(rLocks.count(key) > 0 || wLocks.count(key) > 0) 
-		return;
-
-	RecordPtr record = table->get(key);
-	bool suc = record.get()->RLock(id);
-	if(suc){
-		rLocks[key] = record;
-		if(record->phantomRecord(id)){
-			deleteSet.insert(key); //あんまよくない
-		}
-		else {
-			readSet[key] = record->val(id);
-		}
-	}else {
-		throw CouldntLockResourceError();
-	}
 }
 
 void Transaction::getWriteLock(const string& key){
 	if(wLocks.count(key) > 0) 
 		return; 
-	
-	if(rLocks.count(key) == 0){
-		RecordPtr record = table->get(key);
-		bool suc = record.get()->WLock(id);
-		if(suc){
-			wLocks[key] = record;
-			if(record->phantomRecord(id)){
-				deleteSet.insert(key); //あんまよくない
-			}
-			else {
-				readSet[key] = record->val(id);
-			}
-		}else {
-			throw CouldntLockResourceError();
+
+	RecordPtr record = table->get(key);
+	bool suc = record.get()->WLock(id);
+	if(suc){
+		wLocks[key] = record;
+		auto v = record->latest();
+		if(v->deleted()){
+			deleteSet.insert(key); //あんまよくない
 		}
-	} else {
-		RecordPtr record = rLocks[key];
-		bool suc = record.get()->Upgrade(id);
-		if(suc){
-			wLocks[key] = record;
-		}else {
-			throw CouldntLockResourceError();
+		else {
+			readSet[key] = v->val();
 		}
+	}else {
+		throw CouldntLockResourceError();
 	}
 }
 
@@ -163,9 +144,7 @@ void Transaction::insert(const string& key, const string& value,
 
 bool Transaction::exist(const string& key) {
 	if (!validateKey(key)) throw InvalidKeyError();
-
-	getReadLock(key);
-
+	fetch(key);
 	return deleteSet.count(key) == 0;
 }
 
@@ -222,24 +201,18 @@ void Transaction::writeRedoLog(const string& fname) {
 }
 
 bool Transaction::commit() {
-	releaseRLocks();
+	cstamp = table->getTimeStamp();
 	writeRedoLog(redoLogFile);
 	applyToTable();
 	releaseWLocks();
 	commited = true;
 }
 
-bool Transaction::abort() { 
-	releaseRLocks();
+bool Transaction::abort() {
 	releaseWLocks();
 	aborted = true; 	
 }
 
-void Transaction::releaseRLocks(){
-	for(auto& rlock : rLocks){
-		rlock.second->RUnLock(id);
-	}
-}
 void Transaction::releaseWLocks(){
 	for(auto& wlock : wLocks){
 		wlock.second->WUnLock(id);
@@ -248,12 +221,9 @@ void Transaction::releaseWLocks(){
 
 void Transaction::applyToTable(){
 	for (auto& key : deleteSet) {
-		wLocks[key]->setPhantomRecord(id);
-		if(wLocks[key].use_count() == 2){
-
-		}
+		wLocks[key]->remove(id, cstamp);
 	}
 	for (auto& w : writeSet) {
-		wLocks[w.first]->set(id, w.second);
+		wLocks[w.first]->update(w.second, id, cstamp);
 	}
 }

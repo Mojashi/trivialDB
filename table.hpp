@@ -3,9 +3,12 @@
 #include <set>
 #include <string>
 #include "cnf.hpp"
+
+#include "record.hpp"
+using RecordPtr=std::shared_ptr<Record<string>>;
+
 #include "transaction.hpp"
 #include "hashmap.hpp"
-#include "record.hpp"
 #include <iostream>
 #include <memory>
 #include <mutex>
@@ -15,7 +18,6 @@ using std::map;
 using std::set;
 using std::string;
 
-using RecordPtr=std::shared_ptr<Record<string>>;
 // template<typename T>
 // using LFQueue=boost::lockfree::queue<T>;
 
@@ -25,19 +27,22 @@ extern const char* dbFile;
 
 class Transaction;
 class Table {
-	int tscount = 0;
-	// LFQueue<RecordPtr> phantomLikeRecords; 
+	TimeStamp tscount = start_ts;
+	
 	HashMap<string, RecordPtr> data; 
 	void dump(const string& fname,const string& tempName);
 	void load(const string& fname);
 
+//----thread-unsafe-----
 	void applyRedoLog(const map<string, string>& writeSet,const set<string>& deleteSet);
     void upsert(const string& key, const string& val);
 	bool exist(const string& key);
+//----------------------
 
    public:
+	TimeStamp getTimeStamp();
 	std::mutex redoLogMtx;
-	// void addPLRecords(RecordPtr& record);
+	
 	RecordPtr get(const string& key);
 	void checkPoint();
 	Transaction makeTransaction(std::istream& is = std::cin, std::ostream& os = std::cout);

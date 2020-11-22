@@ -6,44 +6,62 @@
 #include "utils.hpp"
 
 using std::string;
-using TransactionId = unsigned int;
+using TimeStamp = unsigned long long int;
+using TransactionId = TimeStamp;
 
-extern const TransactionId none;
+const extern TimeStamp start_ts;
+const extern TimeStamp minf;
+const extern TransactionId none;
+const extern TransactionId superTx ;
+
+template<typename V>
+class Version;
+
+template<typename V>
+using VerPtr = Version<V>*;
 
 template <typename V>
-class Record{
-    std::list<TransactionId> readerIds;
-    bool phantomRecord_;
+class Version{
+    const TimeStamp created_ts_;
+    const bool deleted_;
+    const V val_;
 
-    TransactionId oldestReaderCache = none;
-    unsigned long long int listVer = -1, cacheVer = -1;
-
-    TransactionId writerId = none;
-    std::shared_mutex mtx;
-
-    V val_;
+    const VerPtr<V> prev_;
     
 public:
-    Record(V val_);
-    Record(bool phantomRecord_);
-    // Record(const Record<V> r);
-    V val(TransactionId id);
-    void set(TransactionId id, V new_val);
+    Version(V val_, VerPtr<V> prev_,TimeStamp created_ts_);
+    Version(bool deleted_,VerPtr<V> prev_, TimeStamp created_ts_);
 
-    void setPhantomRecord(TransactionId id);
-    bool phantomRecord(TransactionId id);
-    bool RLock(TransactionId id);
-    void RUnLock(TransactionId id);
-
-    TransactionId getOldestTransId();
-
-    bool WLock(TransactionId id);
-    void WUnLock(TransactionId id);
-
-    bool Upgrade(TransactionId id);
+    TimeStamp created_ts();
+    V val();
+    VerPtr<V> prev();
+    bool deleted();
 };
 
-template class Record<string>;
+template class Version<string>;
+
+
+template<typename V>
+class Record{
+    VerPtr<V> latest_;
+    TransactionId writerLock;
+
+public:
+    Record();
+    Record(V initVal);
+
+    VerPtr<V> findVersion(TimeStamp ts);
+    VerPtr<V> latest();
+    VerPtr<V> addVersion(const Version<V>& v, TransactionId id);
+
+    VerPtr<V> remove(TransactionId id, TimeStamp ts);
+    VerPtr<V> update(V val, TransactionId id, TimeStamp ts);
+
+    bool WLock(TransactionId id);
+    bool WUnLock(TransactionId id);
+
+    ~Record();
+};
 
 
 class LockingException : std::exception{
@@ -59,7 +77,4 @@ class UnknownWriterException : LockingException {
     UnknownWriterException() : LockingException("unknown writer tried to write value"){}
 };
 
-class UnknownReaderException : LockingException {
-    public:
-    UnknownReaderException() : LockingException("unknown reader tried to read value"){}
-};
+template class Record<string>;

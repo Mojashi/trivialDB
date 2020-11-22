@@ -14,7 +14,9 @@ class Table;
 class Transaction{
     TransactionId id;
     bool commited = false, aborted = false;
-    map<string, std::shared_ptr<Record<string>>> rLocks, wLocks;
+    TimeStamp cstamp = minf;
+
+    map<string,RecordPtr> wLocks;
     map<string,string> writeSet, readSet; //readSet includes writeSet
     set<string> deleteSet;
     Table* table;
@@ -22,16 +24,14 @@ class Transaction{
     std::istream& is;
 
     void writeRedoLog(const string& fname);
-
     void getWriteLock(const string& key);
-    void getReadLock(const string& key);
     void applyToTable();
+    void fetch(const string& key);
 
 public:
     Transaction(Table* table, TransactionId id, std::istream& is = std::cin, std::ostream& os = std::cout);
     bool commit();
     bool abort();
-    void releaseRLocks();
     void releaseWLocks();
 
     void begin();
