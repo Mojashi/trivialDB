@@ -2,6 +2,7 @@
 #include <map>
 #include <string>
 #include <set>
+#include "types.hpp"
 #include "cnf.hpp"
 #include "table.hpp"
 #include "record.hpp"
@@ -11,12 +12,19 @@ using std::map;
 using std::string;
 using std::set;
 class Table;
-class Transaction{
+class Transaction : public std::enable_shared_from_this<Transaction> {
     TransactionId id;
-    bool commited = false, aborted = false;
-    TimeStamp cstamp = minf;
+    enum Status{
+        INFLIGHT,
+        COMMITTING,
+        COMMITTED,
+        ABORTED,
+    } status_;
+    
+    TimeStamp cstamp_ = minf,pstamp_ = minf,sstamp_ = pinf;
 
     map<string,RecordPtr> wLocks;
+    map<string, VerPtr<string>> readVs;
     map<string,string> writeSet, readSet; //readSet includes writeSet
     set<string> deleteSet;
     Table* table;
@@ -27,12 +35,18 @@ class Transaction{
     void getWriteLock(const string& key);
     void applyToTable();
     void fetch(const string& key);
+    bool ssnCheckTransaction();
 
 public:
     Transaction(Table* table, TransactionId id, std::istream& is = std::cin, std::ostream& os = std::cout);
     bool commit();
     bool abort();
     void releaseWLocks();
+
+    Status status();
+    TimeStamp cstamp();
+    TimeStamp sstamp();
+    TimeStamp pstamp();
 
     void begin();
 

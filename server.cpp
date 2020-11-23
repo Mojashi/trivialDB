@@ -29,8 +29,8 @@ void Session::start() {
 		if (args.size() == 0) return;
 		
 		if (args[0] == "begin") {
-			Transaction ts = table->makeTransaction(ss, ss);
-			ts.begin();
+			std::shared_ptr<Transaction> ts = table->makeTransaction(ss, ss);
+			ts->begin();
 		} else if (args[0] == "exit") {
 			return;
 		} else if (args[0] == "help") {

@@ -1,17 +1,17 @@
 #pragma once
+
 #include <map>
 #include <set>
 #include <string>
-#include "cnf.hpp"
-
-#include "record.hpp"
-using RecordPtr=std::shared_ptr<Record<string>>;
-
-#include "transaction.hpp"
-#include "hashmap.hpp"
 #include <iostream>
 #include <memory>
 #include <mutex>
+#include "types.hpp"
+#include "cnf.hpp"
+#include "hashmap.hpp"
+#include "transaction.hpp"
+#include "record.hpp"
+
 // #include <boost/lockfree/queue.hpp>
 
 using std::map;
@@ -45,7 +45,7 @@ class Table {
 	
 	RecordPtr get(const string& key);
 	void checkPoint();
-	Transaction makeTransaction(std::istream& is = std::cin, std::ostream& os = std::cout);
+	TransactionPtr makeTransaction(std::istream& is = std::cin, std::ostream& os = std::cout);
 	void showAll();
 };
 
@@ -76,4 +76,9 @@ class TooLargeTransactionError : public OperationException {
 class CouldntLockResourceError : public OperationException {
 	public:
 	CouldntLockResourceError() : OperationException("couldn't lock resource"){}
+};
+
+class SSNCheckFailedError : public OperationException {
+	public:
+	SSNCheckFailedError() : OperationException("ssn check failed"){}
 };

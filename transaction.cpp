@@ -7,6 +7,7 @@
 #include "utils.hpp"
 #include <algorithm>
 #include <cassert>
+#include "table.hpp"
 
 using std::endl;
 
@@ -14,7 +15,7 @@ Transaction::Transaction(Table* table, TransactionId id,std::istream& is, std::o
 
 void Transaction::begin() {
 	os << "TransactionID:" << id << endl;
-	while (!commited && !aborted) {
+	while (status_ == INFLIGHT) {
 		os << "Transaction > ";
 		string s;
 		getline(is, s);
@@ -60,6 +61,10 @@ void Transaction::begin() {
 			os << e.what() << endl;
 			abort();
 			os << "this transaction has aborted" << endl;
+		} catch (SSNCheckFailedError& e) {
+			os << e.what() << endl;
+			abort();
+			os << "this transaction has aborted" << endl;
 		} catch (OperationException& e) {
 			os << e.what() << endl;
 		} catch (std::invalid_argument& e) {
@@ -72,6 +77,10 @@ void Transaction::fetch(const string& key){
 	if(readSet.count(key) || deleteSet.count(key)) return;
 	auto r = table->get(key);
 	auto v = r->latest();
+	readVs[key] = v;
+	v->addReader(shared_from_this());
+	// pstamp = std::max(pstamp, v->created_ts());
+
 	if(v->deleted())
 		deleteSet.insert(key);
 	else
@@ -97,6 +106,8 @@ void Transaction::getWriteLock(const string& key){
 	if(suc){
 		wLocks[key] = record;
 		auto v = record->latest();
+		v->setOverWriter(shared_from_this());
+
 		if(v->deleted()){
 			deleteSet.insert(key); //あんまよくない
 		}
@@ -201,16 +212,19 @@ void Transaction::writeRedoLog(const string& fname) {
 }
 
 bool Transaction::commit() {
-	cstamp = table->getTimeStamp();
+	status_ = COMMITTING;
+	sstamp_ = cstamp_ = table->getTimeStamp();
+
+	ssnCheckTransaction();
 	writeRedoLog(redoLogFile);
 	applyToTable();
+	status_ = COMMITTED;
 	releaseWLocks();
-	commited = true;
 }
 
 bool Transaction::abort() {
 	releaseWLocks();
-	aborted = true; 	
+	status_ = ABORTED;	
 }
 
 void Transaction::releaseWLocks(){
@@ -220,10 +234,75 @@ void Transaction::releaseWLocks(){
 }
 
 void Transaction::applyToTable(){
-	for (auto& key : deleteSet) {
-		wLocks[key]->remove(id, cstamp);
+	for(auto& w : wLocks){
+		RecordPtr record = w.second;
+		auto v = record->latest();
+		
+		v->updSstamp(sstamp_);
 	}
-	for (auto& w : writeSet) {
-		wLocks[w.first]->update(w.second, id, cstamp);
+
+	for(auto& w : writeSet){
+		RecordPtr record = wLocks[w.first];
+		record->update(w.second, id, cstamp_);
 	}
+	for(auto& d : deleteSet){
+		RecordPtr record = wLocks[d];
+		record->remove(id, cstamp_);
+	}
+}
+
+bool Transaction::ssnCheckTransaction(){
+
+	for(auto& v : readVs){
+		pstamp_ = std::max(pstamp_, v.second->created_ts()); //w-r(自分) update eta(T)
+
+		if(v.second->sstamp() < sstamp_){ // committed or committing
+			TransactionPtr ptr = v.second->overWriter();
+			if(!ptr){ //committed
+				if(v.second->overWriterCstamp() < cstamp_){
+					sstamp_ = std::min(sstamp_, v.second->sstamp()); // r(じぶん)-w update pi(T)
+				}
+			}else {
+				if(ptr->status() != INFLIGHT){ // ptr->cstamp() != minf だと間違い
+					while(ptr->cstamp() == minf){}
+					if(ptr->cstamp() < cstamp_){
+						while(ptr->status() == COMMITTING);
+						if(ptr->status() == COMMITTED)
+							sstamp_ = std::min(sstamp_, ptr->sstamp()); //  r(じぶん)-w update pi(T)
+					}
+				}
+			}
+		}
+	}
+
+	for (auto& w : wLocks) {
+		RecordPtr record = w.second;
+		auto v = record->latest();
+		auto readers = v->readers();
+		pstamp_ = std::max(pstamp_, v->created_ts()); // w(だれか)-w(じぶん) update eta(T)
+
+		for(auto& r : readers){
+			if(!r) continue;
+			if(r->status() == INFLIGHT || r->status() == ABORTED) continue;
+			while(r->cstamp() == minf){}
+			if(r->cstamp() > cstamp_) continue;
+			while(r->status() == COMMITTING);
+			if(r->status() == ABORTED) continue;
+
+			pstamp_ = std::max(pstamp_, r->cstamp()); // r(だれか)-w(じぶん) update eta(T)
+		}
+	}
+
+	if(sstamp_ <= pstamp_)  throw SSNCheckFailedError();
+}
+
+Transaction::Status Transaction::status(){
+	return status_;
+}
+
+TimeStamp Transaction::cstamp(){
+	return cstamp_;
+}
+TimeStamp Transaction::sstamp(){
+	return sstamp_;
 }

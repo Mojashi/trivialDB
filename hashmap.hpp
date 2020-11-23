@@ -3,8 +3,8 @@
 #include <tbb/concurrent_hash_map.h>
 #include <map>
 #include <string>
-#include "record.hpp"
 #include <memory>
+#include "types.hpp"
 
 template<typename K, typename V>
 class HashMap{
@@ -21,4 +21,4 @@ public:
     std::map<K,V> dump();
 };
 
-template class HashMap<std::string,std::shared_ptr<Record<std::string>>>;
+template class HashMap<std::string,RecordPtr>;

@@ -1,10 +1,10 @@
-#include "table.hpp"
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
 #include <cassert>
 #include "utils.hpp"
+#include "table.hpp"
 
 using std::cerr;
 using std::cout;
@@ -39,8 +39,8 @@ void Table::applyRedoLog(const map<string, string>& writeSet,
 		upsert(w.first, w.second);
 	}
 }
-Transaction Table::makeTransaction(std::istream& is,std::ostream& os) {
-	return Transaction(this, tscount++, is, os); 
+TransactionPtr Table::makeTransaction(std::istream& is,std::ostream& os) {
+	return std::make_shared<Transaction>(this, getTimeStamp(), is, os); 
 }
 
 const std::runtime_error invalid_format_error("invalid format");
@@ -180,5 +180,6 @@ void Table::upsert(const string& key, const string& val){
 }
 
 TimeStamp Table::getTimeStamp(){
+	assert(tscount != pinf);
 	return __sync_fetch_and_add(&tscount, 1);
 }

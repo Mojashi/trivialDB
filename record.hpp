@@ -3,26 +3,30 @@
 #include <string>
 #include <list>
 #include <shared_mutex>
-#include "utils.hpp"
 
-using std::string;
-using TimeStamp = unsigned long long int;
-using TransactionId = TimeStamp;
+#include "types.hpp"
 
 const extern TimeStamp start_ts;
 const extern TimeStamp minf;
+const extern TimeStamp pinf;
 const extern TransactionId none;
-const extern TransactionId superTx ;
+const extern TransactionId superTx;
 
-template<typename V>
-class Version;
+#include "utils.hpp"
+#include "table.hpp"
 
-template<typename V>
-using VerPtr = Version<V>*;
+using std::string;
 
 template <typename V>
 class Version{
     const TimeStamp created_ts_;
+    TransactionPtr overWriter_;
+    TimeStamp pstamp_ = minf,sstamp_ = pinf;
+    TimeStamp overWriterCstamp_;
+
+    std::list<TransactionPtr> readers_;
+    std::shared_mutex rmtx;
+
     const bool deleted_;
     const V val_;
 
@@ -31,7 +35,20 @@ class Version{
 public:
     Version(V val_, VerPtr<V> prev_,TimeStamp created_ts_);
     Version(bool deleted_,VerPtr<V> prev_, TimeStamp created_ts_);
+    Version(const Version& v);
 
+    void updPstamp(TimeStamp ts);
+    void updSstamp(TimeStamp ts);
+
+    void setOverWriter(TransactionPtr tx);
+    TransactionPtr overWriter();
+
+    std::list<TransactionPtr> readers();
+    void addReader(TransactionPtr tx);
+
+    TimeStamp overWriterCstamp();
+    //TimeStamp pstamp();
+    TimeStamp sstamp();
     TimeStamp created_ts();
     V val();
     VerPtr<V> prev();
