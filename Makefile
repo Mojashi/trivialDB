@@ -1,6 +1,6 @@
 
 OBJS = hashmap.o table.o transaction.o utils.o server.o main.o record.o
-CFLAGS = -std=c++17 -g -I/home/akihiro/vcpkg/installed/x64-linux/include/ -L/home/akihiro/vcpkg/installed/x64-linux/lib -ltbb -ltbbmalloc -lboost_chrono -pthread -Wfatal-errors
+CFLAGS = -std=c++17 -O0 -g -I/home/akihiro/vcpkg/installed/x64-linux/include/ -L/home/akihiro/vcpkg/installed/x64-linux/lib -ltbb -ltbbmalloc -lboost_chrono -pthread -Wfatal-errors
 
 table.o: table.cpp table.hpp utils.hpp hashmap.hpp transaction.hpp
 	g++ table.cpp -c $(CFLAGS)

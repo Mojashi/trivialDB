@@ -61,7 +61,7 @@ template class Version<string>;
 template<typename V>
 class Record{
     VerPtr<V> latest_;
-    TransactionId writerLock;
+    TransactionId writerLock = none;
 
 public:
     Record();

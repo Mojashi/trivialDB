@@ -76,6 +76,7 @@ void Transaction::begin() {
 void Transaction::fetch(const string& key){
 	if(readSet.count(key) || deleteSet.count(key)) return;
 	auto r = table->get(key);
+	assert(r);
 	auto v = r->latest();
 	readVs[key] = v;
 	v->addReader(shared_from_this());
@@ -246,6 +247,7 @@ void Transaction::applyToTable(){
 		record->update(w.second, id, cstamp_);
 	}
 	for(auto& d : deleteSet){
+		if(wLocks.count(d) == 0) continue;
 		RecordPtr record = wLocks[d];
 		record->remove(id, cstamp_);
 	}
@@ -285,7 +287,7 @@ bool Transaction::ssnCheckTransaction(){
 			if(!r) continue;
 			if(r->status() == INFLIGHT || r->status() == ABORTED) continue;
 			while(r->cstamp() == minf){}
-			if(r->cstamp() > cstamp_) continue;
+			if(r->cstamp() >= cstamp_) continue;
 			while(r->status() == COMMITTING);
 			if(r->status() == ABORTED) continue;
 
@@ -293,6 +295,7 @@ bool Transaction::ssnCheckTransaction(){
 		}
 	}
 
+	os << "cts:" << cstamp_ << " pi:" << sstamp_ << " eta:" << pstamp_ << std::endl;
 	if(sstamp_ <= pstamp_)  throw SSNCheckFailedError();
 }
 

@@ -4,7 +4,7 @@
 vector<string> split(const string& str, char delim) {
     vector<string> ret;
     size_t idx = 0, nex;
-    while((nex = str.find(delim,idx + 1)) != std::string::npos){
+    while((nex = str.find(delim,idx)) != std::string::npos){
         if(nex-idx > 0)
             ret.push_back(str.substr(idx, nex - idx));
         idx = nex + 1;

@@ -176,7 +176,7 @@ void Table::load(const string& fname) {
 
 void Table::upsert(const string& key, const string& val){
 	if(!validateKey(key)) throw InvalidKeyError();
-	data.set(key, std::shared_ptr<Record<string>>(new Record<string>(val) ));
+	data.set(key, RecordPtr(new Record<string>(val)));
 }
 
 TimeStamp Table::getTimeStamp(){

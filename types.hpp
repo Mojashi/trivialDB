@@ -18,5 +18,5 @@ template<typename V>
 class Version;
 
 template<typename V>
-using VerPtr = Version<V>*;
+using VerPtr = std::shared_ptr<Version<V>>;
 
