@@ -21,7 +21,7 @@ using std::string;
 // template<typename T>
 // using LFQueue=boost::lockfree::queue<T>;
 
-extern const char* redoLogFile;
+extern const char* redoLogDir;
 extern const char* dbFile;
 
 
@@ -30,10 +30,10 @@ class Table {
 	TimeStamp tscount = start_ts;
 	
 	HashMap<string, RecordPtr> data; 
+//----thread-unsafe-----
 	void dump(const string& fname,const string& tempName);
 	void load(const string& fname);
-
-//----thread-unsafe-----
+	void readRedoLog(const string& fname);
 	void applyRedoLog(const map<string, string>& writeSet,const set<string>& deleteSet);
     void upsert(const string& key, const string& val);
 	bool exist(const string& key);
@@ -41,7 +41,6 @@ class Table {
 
    public:
 	TimeStamp getTimeStamp();
-	std::mutex redoLogMtx;
 	
 	RecordPtr get(const string& key);
 	void checkPoint();

@@ -31,7 +31,7 @@ class Transaction : public std::enable_shared_from_this<Transaction> {
     std::ostream& os;
     std::istream& is;
 
-    void writeRedoLog(const string& fname);
+    void writeRedoLog();
     void getWriteLock(const string& key);
     void applyToTable();
     void fetch(const string& key);
@@ -39,8 +39,8 @@ class Transaction : public std::enable_shared_from_this<Transaction> {
 
 public:
     Transaction(Table* table, TransactionId id, std::istream& is = std::cin, std::ostream& os = std::cout);
-    bool commit();
-    bool abort();
+    void commit();
+    void abort();
     void releaseWLocks();
 
     Status status();

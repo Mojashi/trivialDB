@@ -160,8 +160,11 @@ bool Transaction::exist(const string& key) {
 	return deleteSet.count(key) == 0;
 }
 
-void Transaction::writeRedoLog(const string& fname) {
+void Transaction::writeRedoLog() {
+	string fname = string(redoLogDir) +"/"+ std::to_string(cstamp_) + ".log";
+
 	string redolog =
+		"$" + std::to_string(cstamp_) + "\n"+
 		"$" + std::to_string(deleteSet.size() + writeSet.size()) + "\n";
 
 	for (auto w : deleteSet) {
@@ -180,50 +183,46 @@ void Transaction::writeRedoLog(const string& fname) {
 
 	redolog = "$" + std::to_string(sum) + "\n$" + std::to_string(sz) + "\n" + redolog;
 
-	{
-		std::lock_guard<std::mutex> lock(table->redoLogMtx);
+	int fd = open(fname.c_str(), O_WRONLY | O_APPEND | O_CREAT, S_IRUSR | S_IWUSR);
+	if (fd == -1) 
+		throw std::runtime_error("an error occurred while opening file");
 	
-		int fd = open(fname.c_str(), O_WRONLY | O_APPEND | O_CREAT, S_IRUSR | S_IWUSR);
-		if (fd == -1) 
-			throw std::runtime_error("an error occurred while opening file");
-		
-		// write中とかにエラー起きると永続化されてるのかされてないのかわからないので一回落として再起動時のcrash
-		// recoveryに託す
-		int wrote = 0, wsz = 0;
-    	os << "writing to redo.log" << endl;
-		while (wrote < redolog.size()) {
-			if ((wsz = write(fd, redolog.c_str() + wrote,
-							 redolog.size() - wrote)) == -1) {
-				os << "an error occurred while writing to file" << endl;
-				close(fd);
-				exit(1);
-			}
-			wrote += wsz;
-		}
-    	os << "OK!" << endl;
-		if (fsync(fd) == -1) {
-			os << "an error occurred while syncing file" << endl;
+	// write中とかにエラー起きると永続化されてるのかされてないのかわからないので一回落として再起動時のcrash
+	// recoveryに託す
+	int wrote = 0, wsz = 0;
+    os << "writing to redo.log" << endl;
+	while (wrote < redolog.size()) {
+		if ((wsz = write(fd, redolog.c_str() + wrote,
+						 redolog.size() - wrote)) == -1) {
+			os << "an error occurred while writing to file" << endl;
+			close(fd);
 			exit(1);
 		}
-		if (close(fd) == -1) {
-			os << "an error occurred while closing file" << endl;
-			exit(1);
-		}
+		wrote += wsz;
+	}
+    os << "OK!" << endl;
+	if (fsync(fd) == -1) {
+		os << "an error occurred while syncing file" << endl;
+		exit(1);
+	}
+	if (close(fd) == -1) {
+		os << "an error occurred while closing file" << endl;
+		exit(1);
 	}
 }
 
-bool Transaction::commit() {
+void Transaction::commit() {
 	status_ = COMMITTING;
 	sstamp_ = cstamp_ = table->getTimeStamp();
 
 	ssnCheckTransaction();
-	writeRedoLog(redoLogFile);
+	writeRedoLog();
 	applyToTable();
 	status_ = COMMITTED;
 	releaseWLocks();
 }
 
-bool Transaction::abort() {
+void Transaction::abort() {
 	releaseWLocks();
 	status_ = ABORTED;	
 }

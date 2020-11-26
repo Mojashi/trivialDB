@@ -1,5 +1,14 @@
 #include "utils.hpp"
 #include "cnf.hpp"
+#include "types.hpp"
+
+string getFname(TimeStamp cstamp){
+    return std::to_string(cstamp) + ".log";
+}
+
+bool checkFname(TimeStamp cstamp, const string& fname){
+	return split(fname, '/').back() == getFname(cstamp);
+}
 
 vector<string> split(const string& str, char delim) {
     vector<string> ret;

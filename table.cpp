@@ -5,12 +5,14 @@
 #include <cassert>
 #include "utils.hpp"
 #include "table.hpp"
+#include <algorithm>
+#include <filesystem>
 
 using std::cerr;
 using std::cout;
 using std::endl;
 
-const char* redoLogFile = "redo.log";
+const char* redoLogDir = "logs";
 const char* dbFile = "data.db";
 const char* dbTempFile = "data.temp";
 
@@ -54,6 +56,14 @@ unsigned int readUInt(FILE* fp) {
 	return v;
 }
 
+unsigned long long int readULL(FILE* fp) {
+	unsigned long long int v;
+	if (fscanf(fp, "$%llu\n", &v) != 1) {
+		throw invalid_format_error;
+	}
+	return v;
+}
+
 string readStr(FILE* fp) {
 	unsigned int len = readUInt(fp);
 	if (len > MAX_TRANSACTION_SIZE) 
@@ -73,23 +83,23 @@ bool isEOF(FILE* fp) {
 	fseek(fp, -1, SEEK_CUR);
 	return ret;
 }
-void Table::checkPoint() {
-	unsigned int sum, sz;
 
-	load(dbFile);
-
-	FILE* fp = fopen(redoLogFile, "rb");
+void Table::readRedoLog(const string& fname){
+	FILE* fp = fopen(fname.c_str(), "rb");
 	if (fp == NULL) {
 		return;
 	}
-	cout << "redo.log found" << endl;
+	cout << fname << endl;
+	TimeStamp cstamp;
 	try {
+		unsigned int sum, sz;
+
 		while (!isEOF(fp)) {
 			if (fscanf(fp, "$%u\n$%u\n", &sum, &sz) < 2)
 				throw invalid_format_error;
 			if (sz > MAX_TRANSACTION_SIZE) 
 		        throw TooLargeTransactionError();
-        
+
 			map<string, string> writeSet;
 			set<string> deleteSet;
 
@@ -100,6 +110,12 @@ void Table::checkPoint() {
 			if (sum != checksum(bufp, sz)) throw invalid_checksum_error;
 
 			fseek(fp, -(int)sz, SEEK_CUR);
+
+			cstamp = readULL(fp);
+			if(!checkFname(cstamp, fname))
+				throw std::runtime_error("invalid filename");
+			if(cstamp < tscount) break;
+
 			unsigned int n = readUInt(fp);
 
 			for (int i = 0; n > i; i++) {
@@ -116,14 +132,34 @@ void Table::checkPoint() {
 
 			applyRedoLog(writeSet, deleteSet);
 		}
+		tscount = std::max(tscount, cstamp + 1);
 	} catch (std::runtime_error& e) {
 		cerr << e.what() << endl;
-		cerr << "ID:? was aborted" << endl;
+		cerr << std::to_string(cstamp) + " was aborted" << endl;
 	}
 	fclose(fp);
 
+}
+
+void Table::checkPoint() {
+	load(dbFile);
+	
+	std::filesystem::create_directory(redoLogDir);
+
+	vector<string> paths;
+
+    for (const auto & entry : std::filesystem::directory_iterator(redoLogDir)){
+		paths.push_back(entry.path());
+	}
+	std::sort(paths.begin(), paths.end());
+	for(auto path : paths){
+		readRedoLog(path);
+	}
+
 	dump(dbFile, dbTempFile);
-	remove(redoLogFile);
+	for(auto path : paths){
+		remove(path.c_str());
+	}
 }
 
 void Table::showAll() {
@@ -138,6 +174,7 @@ void Table::dump(const string& fname, const string& tempName) {
 	FILE* fp = fopen(tempName.c_str(), "wb");
 	if (fp == NULL)
 		throw std::runtime_error("an error occured while opening db file");
+	fprintf(fp, "$%llu\n", tscount);
 
 	for (auto& w : data.dump()) {
 		VerPtr<string> latest = w.second->latest();
@@ -161,6 +198,9 @@ void Table::load(const string& fname) {
 
 	FILE* fp = fopen(fname.c_str(), "rb");
 	if (fp == NULL) return;
+	TimeStamp cstamp = readULL(fp);
+	tscount = cstamp;
+
 	std::map<string, string> bufTable;
 	try {
 		while (!isEOF(fp)) {
