@@ -19,7 +19,7 @@ using RecordPtr=std::shared_ptr<Record<string>>;
 // template<typename T>
 // using LFQueue=boost::lockfree::queue<T>;
 
-extern const char* redoLogFile;
+extern const char* redoLogDir;
 extern const char* dbFile;
 
 
@@ -28,16 +28,26 @@ class Table {
 	int tscount = 0;
 	// LFQueue<RecordPtr> phantomLikeRecords; 
 	HashMap<string, RecordPtr> data; 
+//----thread-unsafe-----
 	void dump(const string& fname,const string& tempName);
 	void load(const string& fname);
+<<<<<<< HEAD
 
+=======
+	void readRedoLog(const string& fname);
+>>>>>>> 1870a45... parallel WAL
 	void applyRedoLog(const map<string, string>& writeSet,const set<string>& deleteSet);
     void upsert(const string& key, const string& val);
 	bool exist(const string& key);
 
    public:
+<<<<<<< HEAD
 	std::mutex redoLogMtx;
 	// void addPLRecords(RecordPtr& record);
+=======
+	TimeStamp getTimeStamp();
+	
+>>>>>>> 1870a45... parallel WAL
 	RecordPtr get(const string& key);
 	void checkPoint();
 	Transaction makeTransaction(std::istream& is = std::cin, std::ostream& os = std::cout);

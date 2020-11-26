@@ -37,17 +37,26 @@ private:
     std::ostream& os;
     std::istream& is;
 
+<<<<<<< HEAD
     void writeRedoLog(const string& fname);
 
+=======
+    void writeRedoLog();
+>>>>>>> 1870a45... parallel WAL
     void getWriteLock(const string& key);
     void getReadLock(const string& key);
     void applyToTable();
 
 public:
     Transaction(Table* table, TransactionId id, std::istream& is = std::cin, std::ostream& os = std::cout);
+<<<<<<< HEAD
     bool commit();
     bool abort();
     void releaseRLocks();
+=======
+    void commit();
+    void abort();
+>>>>>>> 1870a45... parallel WAL
     void releaseWLocks();
 
     void begin();
