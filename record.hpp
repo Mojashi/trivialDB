@@ -17,12 +17,13 @@ const extern TransactionId superTx;
 template <typename V>
 class Record{
     std::list<TransactionId> readerIds;
+    volatile int readerCou = 0;
     bool phantomRecord_;
 
-    TransactionId oldestReaderCache = none;
-    unsigned long long int listVer = -1, cacheVer = -1;
+    volatile TransactionId oldestReaderCache = none;
+    volatile unsigned long long int listVer = -1, cacheVer = -1;
 
-    TransactionId writerId = none;
+    volatile TransactionId writerId = none;
     std::shared_mutex mtx;
 
     V val_;

@@ -26,7 +26,7 @@ extern const char* dbFile;
 
 class Transaction;
 class Table {
-	TimeStamp tscount = 0;
+	TimeStamp tscount = start_ts;
 	// LFQueue<RecordPtr> phantomLikeRecords; 
 	HashMap<string, RecordPtr> data; 
 //----thread-unsafe-----
@@ -42,7 +42,7 @@ class Table {
 	
 	RecordPtr get(const string& key);
 	void checkPoint();
-	Transaction makeTransaction(std::istream& is = std::cin, std::ostream& os = std::cout);
+	TransactionPtr makeTransaction(std::istream& is = std::cin, std::ostream& os = std::cout);
 	void showAll();
 };
 

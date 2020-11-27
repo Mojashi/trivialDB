@@ -231,6 +231,7 @@ bool Transaction::commit() {
 	cstamp_ = table->getTimeStamp();
 
 	releaseRLocks();
+if(!BENCH)
 	writeRedoLog();
 	applyToTable();
 	releaseWLocks();
@@ -257,6 +258,7 @@ void Transaction::releaseWLocks(){
 
 void Transaction::applyToTable(){
 	for (auto& key : deleteSet) {
+		if(wLocks.count(key) == 0) continue;
 		wLocks[key]->setPhantomRecord(id);
 		if(wLocks[key].use_count() == 2){
 
@@ -265,6 +267,10 @@ void Transaction::applyToTable(){
 	for (auto& w : writeSet) {
 		wLocks[w.first]->set(id, w.second);
 	}
+}
+
+Transaction::Status Transaction::status(){
+	return status_;
 }
 
 void Transaction::freeMem(){

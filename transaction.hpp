@@ -25,7 +25,7 @@ public:
 
     volatile Status status_ = INFLIGHT;
 private:
-    TimeStamp cstamp_ = minf;
+    volatile TimeStamp cstamp_ = minf;
     TransactionId id;
 
     map<string, std::shared_ptr<Record<string>>> rLocks, wLocks;
@@ -56,6 +56,8 @@ public:
     void update(const string& key, const string& value, bool insertIfNotExist=false);
     void insert(const string& key, const string& value, bool updateIfExist=false);  
     bool exist(const string& key);
+
+    Status status();
 
     void freeMem();
 };

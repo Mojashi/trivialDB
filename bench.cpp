@@ -75,16 +75,14 @@ void worker(int id){
                 }
             } catch (CouldntLockResourceError& e) {
                 ts->abort();
-    		} catch (SSNCheckFailedError& e) {
-                ts->abort();
 	    	} catch(exception& e){}
         }
         try{
             if(ts->status() == Transaction::INFLIGHT)
                 ts->commit();
-    	} catch (SSNCheckFailedError& e) {
+    	} catch(std::exception& e){
             ts->abort();
-    	}
+        }
         ts->freeMem();
 
         if(ts->status() == Transaction::ABORTED) __sync_fetch_and_add(&abortCou, 1);

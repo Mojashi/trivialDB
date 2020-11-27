@@ -42,8 +42,8 @@ void Table::applyRedoLog(const map<string, string>& writeSet,
 		upsert(w.first, w.second);
 	}
 }
-Transaction Table::makeTransaction(std::istream& is,std::ostream& os) {
-	return Transaction(this, tscount++, is, os); 
+TransactionPtr Table::makeTransaction(std::istream& is,std::ostream& os) {
+	return std::make_shared<Transaction>(this, getTimeStamp(), is, os); 
 }
 
 const std::runtime_error invalid_format_error("invalid format");
@@ -198,6 +198,9 @@ void Table::load(const string& fname) {
 
 	FILE* fp = fopen(fname.c_str(), "rb");
 	if (fp == NULL) return;
+	TimeStamp cstamp = readULL(fp);
+	tscount = cstamp;
+
 	try {
 		while (!isEOF(fp)) {
 			string key = readStr(fp);

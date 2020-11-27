@@ -1,6 +1,6 @@
 MAINS = main.o bench.o
 OBJS = hashmap.o table.o transaction.o utils.o server.o record.o
-CFLAGS = -std=c++17 -O3 -I/home/akihiro/vcpkg/installed/x64-linux/include/ -L/home/akihiro/vcpkg/installed/x64-linux/lib -ltbb -ltbbmalloc -lboost_chrono -lstdc++fs -pthread -Wfatal-errors
+CFLAGS = -std=c++17 -O0 -g -I/home/akihiro/vcpkg/installed/x64-linux/include/ -L/home/akihiro/vcpkg/installed/x64-linux/lib -ltbb -ltbbmalloc -lboost_chrono -lstdc++fs -pthread -Wfatal-errors
 GCC = g++-8
 
 table.o: table.cpp table.hpp utils.hpp hashmap.hpp transaction.hpp
