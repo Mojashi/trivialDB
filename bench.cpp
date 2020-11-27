@@ -12,7 +12,7 @@
 using namespace std;
 
 const bool BENCH = true;
-const int KEYRANGE = 1000;
+int KEYRANGE;
 
 int num_thread,num_ts, bend;
 float rrate;
@@ -102,12 +102,13 @@ void initTable(){
 }
 
 int main(int argc, char *argv[]){
-    if(argc < 5) cin >> num_thread >> num_ts >> rrate >> bend;
+    if(argc < 6) cin >> num_thread >> num_ts >> rrate >> bend >> KEYRANGE;
     else {
         num_thread = atoi(argv[1]);
         num_ts = atoi(argv[2]);
         rrate = atof(argv[3]);
         bend = atoi(argv[4]);
+        KEYRANGE = atoi(argv[5]);
     }
 
     assert(bend > 0);

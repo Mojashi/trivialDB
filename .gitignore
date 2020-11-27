@@ -5,3 +5,5 @@ redo.log
 data.db
 test
 recovtest
+bench
+logs/
