@@ -66,6 +66,11 @@ void Transaction::begin() {
 			os << e.what() << endl;
 		}
 	}
+	freeMem();
+}
+
+TransactionId Transaction::getId(){
+	return id;
 }
 
 string Transaction::get(const string& key) {
@@ -77,6 +82,7 @@ string Transaction::get(const string& key) {
 	if (deleteSet.count(key)) throw RecordDoesNotExistError();
 	
 	assert(true);
+	return "";
 }
 
 void Transaction::getReadLock(const string& key){
