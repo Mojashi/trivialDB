@@ -71,6 +71,11 @@ void Transaction::begin() {
 			os << e.what() << endl;
 		}
 	}
+	freeMem();
+}
+
+TransactionId Transaction::getId(){
+	return id;
 }
 
 void Transaction::fetch(const string& key){
@@ -96,6 +101,7 @@ string Transaction::get(const string& key) {
 		return readSet[key];
 	if (deleteSet.count(key)) throw RecordDoesNotExistError();
 	assert(true);
+	return "";
 }
 
 void Transaction::getWriteLock(const string& key){
@@ -216,15 +222,18 @@ void Transaction::commit() {
 	sstamp_ = cstamp_ = table->getTimeStamp();
 
 	ssnCheckTransaction();
-	writeRedoLog();
+
+	if(!BENCH)
+		writeRedoLog();
+
 	applyToTable();
 	status_ = COMMITTED;
 	releaseWLocks();
 }
 
 void Transaction::abort() {
-	releaseWLocks();
 	status_ = ABORTED;	
+	releaseWLocks();
 }
 
 void Transaction::releaseWLocks(){
@@ -253,49 +262,62 @@ void Transaction::applyToTable(){
 }
 
 bool Transaction::ssnCheckTransaction(){
+	os << "lets check" << cstamp_ <<endl;
 
 	for(auto& v : readVs){
-		pstamp_ = std::max(pstamp_, v.second->created_ts()); //w-r(自分) update eta(T)
+		pstamp_ = std::max((TimeStamp)pstamp_, v.second->created_ts()); //w-r(自分) update eta(T)
 
 		if(v.second->sstamp() < sstamp_){ // committed or committing
 			TransactionPtr ptr = v.second->overWriter();
 			if(!ptr){ //committed
 				if(v.second->overWriterCstamp() < cstamp_){
-					sstamp_ = std::min(sstamp_, v.second->sstamp()); // r(じぶん)-w update pi(T)
+					sstamp_ = std::min((TimeStamp)sstamp_, v.second->sstamp()); // r(じぶん)-w update pi(T)
 				}
 			}else {
 				if(ptr->status() != INFLIGHT){ // ptr->cstamp() != minf だと間違い
-					while(ptr->cstamp() == minf){}
-					if(ptr->cstamp() < cstamp_){
-						while(ptr->status() == COMMITTING);
-						if(ptr->status() == COMMITTED)
-							sstamp_ = std::min(sstamp_, ptr->sstamp()); //  r(じぶん)-w update pi(T)
-					}
+					while(ptr->cstamp() == minf);
+					if(ptr->cstamp() >= cstamp_) continue;
+
+					while(ptr->status() == COMMITTING);
+					if(ptr->status() == COMMITTED)
+						sstamp_ = std::min((TimeStamp)sstamp_, ptr->sstamp()); //  r(じぶん)-w update pi(T)				
 				}
 			}
 		}
 	}
 
+	//os << "wlock check" << cstamp_ <<endl;
+
 	for (auto& w : wLocks) {
 		RecordPtr record = w.second;
 		auto v = record->latest();
-		auto readers = v->readers();
-		pstamp_ = std::max(pstamp_, v->created_ts()); // w(だれか)-w(じぶん) update eta(T)
+		auto readers = v->readers(id);
+	//os << "readers check" << cstamp_ <<endl;
+		pstamp_ = std::max((TimeStamp)pstamp_, v->created_ts()); // w(だれか)-w(じぶん) update eta(T)
 
 		for(auto& r : readers){
+	//		os << "a" << cstamp_<<"," <<r->cstamp() <<endl;
 			if(!r) continue;
 			if(r->status() == INFLIGHT || r->status() == ABORTED) continue;
+	//os << "b" << cstamp_ <<endl;
 			while(r->cstamp() == minf){}
+	//os << "v" << cstamp_ <<endl;
 			if(r->cstamp() >= cstamp_) continue;
-			while(r->status() == COMMITTING);
-			if(r->status() == ABORTED) continue;
-
-			pstamp_ = std::max(pstamp_, r->cstamp()); // r(だれか)-w(じぶん) update eta(T)
+	//os << "d" << cstamp_ <<endl;
+			while(r->status() == COMMITTING){
+			// os << "w" << cstamp_<<"," <<r->cstamp() <<endl;
+			}
+	//os << "r" << cstamp_ <<endl;
+			if(r->status() == COMMITTED)
+				pstamp_ = std::max((TimeStamp)pstamp_, r->cstamp()); // r(だれか)-w(じぶん) update eta(T)
 		}
 	}
 
-	os << "cts:" << cstamp_ << " pi:" << sstamp_ << " eta:" << pstamp_ << std::endl;
-	if(sstamp_ <= pstamp_)  throw SSNCheckFailedError();
+	//os << "cts:" << cstamp_ << " pi:" << sstamp_ << " eta:" << pstamp_ << std::endl;
+	if(sstamp_ <= pstamp_)
+		throw SSNCheckFailedError();
+	
+	return true;
 }
 
 Transaction::Status Transaction::status(){
@@ -307,4 +329,12 @@ TimeStamp Transaction::cstamp(){
 }
 TimeStamp Transaction::sstamp(){
 	return sstamp_;
+}
+
+void Transaction::freeMem(){
+	wLocks.clear();
+	readVs.clear();
+	writeSet.clear();
+	readSet.clear();
+	deleteSet.clear();
 }

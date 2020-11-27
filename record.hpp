@@ -21,11 +21,12 @@ template <typename V>
 class Version{
     const TimeStamp created_ts_;
     TransactionPtr overWriter_;
-    TimeStamp pstamp_ = minf,sstamp_ = pinf;
-    TimeStamp overWriterCstamp_;
+    volatile TimeStamp pstamp_ = minf,sstamp_ = pinf;
+    volatile TimeStamp overWriterCstamp_;
 
     std::list<TransactionPtr> readers_;
-    std::shared_mutex rmtx;
+    volatile TransactionId readerLock = none;
+    // std::shared_mutex rmtx;
 
     const bool deleted_;
     const V val_;
@@ -43,7 +44,7 @@ public:
     void setOverWriter(TransactionPtr tx);
     TransactionPtr overWriter();
 
-    std::list<TransactionPtr> readers();
+    std::list<TransactionPtr> readers(TransactionId id);
     void addReader(TransactionPtr tx);
 
     TimeStamp overWriterCstamp();
@@ -61,7 +62,7 @@ template class Version<string>;
 template<typename V>
 class Record{
     VerPtr<V> latest_;
-    TransactionId writerLock = none;
+    volatile TransactionId writerLock = none;
 
 public:
     Record();

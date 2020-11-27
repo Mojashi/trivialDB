@@ -8,20 +8,26 @@
 #include "record.hpp"
 #include <iostream>
 
+
+extern const bool BENCH;
+
 using std::map;
 using std::string;
 using std::set;
 class Table;
 class Transaction : public std::enable_shared_from_this<Transaction> {
-    TransactionId id;
+public:
     enum Status{
         INFLIGHT,
         COMMITTING,
         COMMITTED,
         ABORTED,
-    } status_;
-    
-    TimeStamp cstamp_ = minf,pstamp_ = minf,sstamp_ = pinf;
+    };
+
+    volatile Status status_ = INFLIGHT;
+    volatile TimeStamp cstamp_ = minf,pstamp_ = minf,sstamp_ = pinf;
+private:
+    TransactionId id;
 
     map<string,RecordPtr> wLocks;
     map<string, VerPtr<string>> readVs;
@@ -39,6 +45,7 @@ class Transaction : public std::enable_shared_from_this<Transaction> {
 
 public:
     Transaction(Table* table, TransactionId id, std::istream& is = std::cin, std::ostream& os = std::cout);
+    TransactionId getId();
     void commit();
     void abort();
     void releaseWLocks();
@@ -56,5 +63,7 @@ public:
     void update(const string& key, const string& value, bool insertIfNotExist=false);
     void insert(const string& key, const string& value, bool updateIfExist=false);  
     bool exist(const string& key);
+
+    void freeMem();
 };
 

@@ -66,14 +66,28 @@ void Version<V>::updSstamp(TimeStamp ts){
 
 template<typename V>
 void Version<V>::addReader(TransactionPtr tx){
-	std::lock_guard<std::shared_mutex> lock(rmtx);
-	readers_.push_back(tx);
+	while(1){
+		if(readerLock == none){
+			if(__sync_bool_compare_and_swap(&readerLock, none, tx->getId())){
+				readers_.push_back(tx);
+				readerLock = none;
+				return;
+			}
+		}
+	}
 }
 
 template<typename V>
-std::list<TransactionPtr> Version<V>::readers(){
-	std::shared_lock<std::shared_mutex> lock(rmtx);
-	return readers_;
+std::list<TransactionPtr> Version<V>::readers(TransactionId id){
+	while(1){
+		if(readerLock == none){
+			if(__sync_bool_compare_and_swap(&readerLock, none, id)){
+				auto tmp = readers_;
+				readerLock = none;
+				return tmp;
+			}
+		}
+	}
 }
 
 template<typename V>
@@ -117,12 +131,13 @@ VerPtr<V> Record<V>::findVersion(TimeStamp ts){
 
 template<typename V>
 bool Record<V>::WLock(TransactionId id){
-	while(1){
+	while(writerLock == none || writerLock > id){
 		if(writerLock == none){
 			if(__sync_bool_compare_and_swap(&writerLock, none, id))
 				return true;
 		}
 	}
+	throw CouldntLockResourceError();
 }
 
 template<typename V>
