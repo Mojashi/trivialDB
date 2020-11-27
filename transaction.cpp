@@ -14,7 +14,7 @@ Transaction::Transaction(Table* table, TransactionId id,std::istream& is, std::o
 
 void Transaction::begin() {
 	os << "TransactionID:" << id << endl;
-	while (!commited && !aborted) {
+	while (status_ == INFLIGHT) {
 		os << "Transaction > ";
 		string s;
 		getline(is, s);
@@ -228,6 +228,7 @@ void Transaction::writeRedoLog() {
 
 bool Transaction::commit() {
 	status_ = COMMITTING;
+	cstamp_ = table->getTimeStamp();
 
 	releaseRLocks();
 	writeRedoLog();
@@ -264,4 +265,12 @@ void Transaction::applyToTable(){
 	for (auto& w : writeSet) {
 		wLocks[w.first]->set(id, w.second);
 	}
+}
+
+void Transaction::freeMem(){
+	rLocks.clear();
+	wLocks.clear();
+	writeSet.clear();
+	readSet.clear();
+	deleteSet.clear();
 }

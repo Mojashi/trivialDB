@@ -3,12 +3,16 @@
 #include <string>
 #include <list>
 #include <shared_mutex>
+#include "types.hpp"
 #include "utils.hpp"
 
 using std::string;
-using TransactionId = unsigned int;
 
-extern const TransactionId none;
+const extern TimeStamp start_ts;
+const extern TimeStamp minf;
+const extern TimeStamp pinf;
+const extern TransactionId none;
+const extern TransactionId superTx;
 
 template <typename V>
 class Record{

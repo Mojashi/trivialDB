@@ -5,12 +5,9 @@
 #include <unistd.h>
 #include <cassert>
 #include "utils.hpp"
-<<<<<<< HEAD
-=======
 #include "table.hpp"
 #include <algorithm>
 #include <filesystem>
->>>>>>> 1870a45... parallel WAL
 
 using std::cerr;
 using std::cout;
@@ -201,14 +198,6 @@ void Table::load(const string& fname) {
 
 	FILE* fp = fopen(fname.c_str(), "rb");
 	if (fp == NULL) return;
-<<<<<<< HEAD
-
-=======
-	TimeStamp cstamp = readULL(fp);
-	tscount = cstamp;
-
-	std::map<string, string> bufTable;
->>>>>>> 1870a45... parallel WAL
 	try {
 		while (!isEOF(fp)) {
 			string key = readStr(fp);
@@ -230,3 +219,8 @@ void Table::upsert(const string& key, const string& val){
 
 // 	phantomLikeRecords.push(record);
 // }
+
+TimeStamp Table::getTimeStamp(){
+	assert(tscount != pinf);
+	return __sync_fetch_and_add(&tscount, 1);
+}

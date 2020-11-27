@@ -1,7 +1,11 @@
 #include "record.hpp"
 #include <algorithm>
 
-const TransactionId none = UINT32_MAX;
+const TimeStamp start_ts = 2;
+const TimeStamp minf = 0;
+const TimeStamp pinf = std::numeric_limits<TimeStamp>::max();
+const TransactionId none = 0;
+const TransactionId superTx = 1;
 
 template<typename V>
 Record<V>::Record(V val_):val_(val_){}

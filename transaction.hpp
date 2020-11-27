@@ -15,9 +15,6 @@ using std::string;
 using std::set;
 class Table;
 class Transaction : public std::enable_shared_from_this<Transaction> {
-    TransactionId id;
-    bool commited = false, aborted = false;
-    map<string, std::shared_ptr<Record<string>>> rLocks, wLocks;
 public:
     enum Status{
         INFLIGHT,
@@ -28,35 +25,27 @@ public:
 
     volatile Status status_ = INFLIGHT;
 private:
+    TimeStamp cstamp_ = minf;
     TransactionId id;
 
-    map<string,RecordPtr> wLocks;
+    map<string, std::shared_ptr<Record<string>>> rLocks, wLocks;
     map<string,string> writeSet, readSet; //readSet includes writeSet
     set<string> deleteSet;
     Table* table;
     std::ostream& os;
     std::istream& is;
 
-<<<<<<< HEAD
-    void writeRedoLog(const string& fname);
-
-=======
     void writeRedoLog();
->>>>>>> 1870a45... parallel WAL
     void getWriteLock(const string& key);
     void getReadLock(const string& key);
     void applyToTable();
 
 public:
     Transaction(Table* table, TransactionId id, std::istream& is = std::cin, std::ostream& os = std::cout);
-<<<<<<< HEAD
+    TransactionId getId();
     bool commit();
     bool abort();
     void releaseRLocks();
-=======
-    void commit();
-    void abort();
->>>>>>> 1870a45... parallel WAL
     void releaseWLocks();
 
     void begin();

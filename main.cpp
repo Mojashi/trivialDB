@@ -2,7 +2,7 @@
 #include <vector>
 #include "server.hpp"
 
-const bool BENCH = true;
+const bool BENCH = false;
 
 int main(){
     boost::asio::io_service io_service;
