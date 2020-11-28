@@ -18,7 +18,7 @@ template <typename V>
 class Record{
     std::list<TransactionId> readerIds;
     volatile int readerCou = 0;
-    bool phantomRecord_;
+    volatile bool phantomRecord_;
 
     volatile TransactionId oldestReaderCache = none;
     volatile unsigned long long int listVer = -1, cacheVer = -1;

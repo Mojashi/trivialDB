@@ -22,7 +22,8 @@ V Record<V>::val(TransactionId id){
 
 template<typename V>
 void Record<V>::set(TransactionId id,V new_val){
-	if(writerId != id) throw UnknownWriterException();
+	if(writerId != id) 
+		throw UnknownWriterException();
 	phantomRecord_ = false;
 	val_ = new_val;
 }
@@ -34,7 +35,8 @@ bool Record<V>::phantomRecord(TransactionId id){
 }
 template<typename V>
 void Record<V>::setPhantomRecord(TransactionId id){
-	if(writerId != id) throw UnknownWriterException();
+	if(writerId != id)
+		throw UnknownWriterException();
 	phantomRecord_ = true;
 }
 
@@ -99,7 +101,8 @@ bool Record<V>::WLock(TransactionId id) {
 
 template<typename V>
 void Record<V>::WUnLock(TransactionId id) {
-	if (id != writerId) throw UnknownWriterException();
+	if (id != writerId) 
+		throw UnknownWriterException();
 	writerId = none;
 }
 
