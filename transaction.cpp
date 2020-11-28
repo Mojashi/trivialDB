@@ -82,7 +82,7 @@ void Transaction::fetch(const string& key){
 	if(readSet.count(key) || deleteSet.count(key)) return;
 	auto r = table->get(key);
 	assert(r);
-	auto v = r->latest();
+	auto v = r->findVersion(id);
 	readVs[key] = v;
 	v->addReader(shared_from_this());
 	// pstamp = std::max(pstamp, v->created_ts());
@@ -90,7 +90,7 @@ void Transaction::fetch(const string& key){
 	if(v->deleted())
 		deleteSet.insert(key);
 	else
-		readSet[key] = r->latest()->val();
+		readSet[key] = r->findVersion(id)->val();
 }
 
 string Transaction::get(const string& key) {
